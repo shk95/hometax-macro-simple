@@ -1,0 +1,29 @@
+[tool.poetry]
+name = "hometax_macro_simple"
+version = "0.1.0"
+description = "파이썬을 이용한 간단한 홈텍스 제출 메크로[근로소득]"
+authors = ["seok-hyeon Kang <shk9510@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+packages = [
+    { include = "hometax_macro_simple" },
+]
+
+
+[tool.poetry.dependencies]
+python = ">= 3.11, <3.12"
+PySide6 = "^6.6.1"
+selenium = "^4.17.2"
+webdriver-manager = "^4.0.1"
+pybrowsers = "^0.5.2"
+pandas = "^2.2.0"
+openpyxl = "^3.1.2"
+
+
+[tool.poetry.dev-dependencies]
+pyinstaller = "^6.2.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
