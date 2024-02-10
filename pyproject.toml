@@ -20,7 +20,8 @@ pandas = "^2.2.0"
 openpyxl = "^3.1.2"
 
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
+pip-licenses = "^4.3.4"
 pyinstaller = "^6.2.0"
 
 

@@ -3,6 +3,7 @@ import os
 import platform
 import sys
 import time
+from enum import Enum
 from typing import Optional
 
 import browsers
@@ -21,34 +22,37 @@ from hometax_macro_simple.exception import InvalidDataException
 _SITE_URL: str = "https://www.hometax.go.kr"
 _USER_AGENT: str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0"
 _TARGET_BROWSER: str = "msedge"
-_INPUT_ID: dict = {
-    "name": "edtIeNm",
-    "personal_id": "edtNtplTxprDscmNoEncCntn",
-    "head_of_household": "cmbHshrClCd",
-    "continues_to_work_y": "cmbYrsClCd_input_0",
-    "continues_to_work_n": "cmbYrsClCd_input_1",
-    "step_1_start_date": "edtAttrYrStrtDt_input",
-    "step_1_end_date": "edtAttrYrEndDt_input",
-    "step_1_salary": "edtSnwAmt",
-    "step_1_income_tax": "edtClusInctxPpmTxamt",
-    "step_1_local_income_tax": "edtClusRestxPpmTxamt",
-    "step_2_women_deduction": "cmbWmnDdcClCd_input_0",
-    "step_2_health_insurance": "edtNtsEtMateHife",
-    "step_2_employment_insurance": "edtNtsEtMateEmpInfee",
-    "step_3_national_pension": "edtNpInfeeUseAmt"
-}
-_BUTTON_ID: dict = {
-    "check_personal_id": "trigger49",
-    "step_1_next": "trigger70",
-    "step_1_confirm": "trigger88",
-    "step_2_confirm": "trigger102",
-    "final_1_confirm": "trigger125",  # 재계산하기
-    "final_2_confirm": "trigger57",  # 추가하기
-    "reset": "trigger68"
-}
-_ELEMENT_ID: dict = {
-    "working_page_iframe": "txppIframe",
-}
+
+
+class InputID(Enum):
+    NAME: str = "edtIeNm"
+    PERSONAL_ID: str = "edtNtplTxprDscmNoEncCntn"
+    HEAD_OF_HOUSEHOLD: str = "cmbHshrClCd"
+    CONTINUES_TO_WORK_Y: str = "cmbYrsClCd_input_0"
+    CONTINUES_TO_WORK_N: str = "cmbYrsClCd_input_1"
+    STEP_1_START_DATE: str = "edtAttrYrStrtDt_input"
+    STEP_1_END_DATE: str = "edtAttrYrEndDt_input"
+    STEP_1_SALARY: str = "edtSnwAmt"
+    STEP_1_INCOME_TAX: str = "edtClusInctxPpmTxamt"
+    STEP_1_LOCAL_INCOME_TAX: str = "edtClusRestxPpmTxamt"
+    STEP_2_WOMEN_DEDUCTION: str = "cmbWmnDdcClCd_input_0"
+    STEP_2_HEALTH_INSURANCE: str = "edtNtsEtMateHife"
+    STEP_2_EMPLOYMENT_INSURANCE: str = "edtNtsEtMateEmpInfee"
+    STEP_3_NATIONAL_PENSION: str = "edtNpInfeeUseAmt"
+
+
+class ButtonID(Enum):
+    CHECK_PERSONAL_ID: str = "trigger49"
+    STEP_1_NEXT: str = "trigger70"
+    STEP_1_CONFIRM: str = "trigger88"
+    STEP_2_CONFIRM: str = "trigger102"
+    FINAL_1_CONFIRM: str = "trigger125"  # 재계산하기
+    FINAL_2_CONFIRM: str = "trigger57"  # 추가하기
+    RESET: str = "trigger68"
+
+
+class ElementID(Enum):
+    WORKING_PAGE_IFRAME: str = "txppIframe"
 
 
 class WebDriverManager:
@@ -81,7 +85,7 @@ class _Control:
         self._driver.switch_to.default_content()
         self._driver.execute_script("window.scrollTo(0, 0);")
         try:
-            self._driver.find_element(By.ID, _ELEMENT_ID["working_page_iframe"])
+            self._driver.find_element(By.ID, ElementID.WORKING_PAGE_IFRAME.value)
         except NoSuchElementException as e:
             logging.info(f"메크로 시작 페이지가 아닙니다. [{e.msg}]")
             return False
@@ -93,14 +97,14 @@ class _Control:
     # 메크로 작업할 영역으로 이동
     def switch_to_working_page(self) -> None:
         self._driver.switch_to.default_content()
-        self._driver.switch_to.frame(_ELEMENT_ID["working_page_iframe"])
+        self._driver.switch_to.frame(ElementID.WORKING_PAGE_IFRAME.value)
 
     def set_name(self, name: str) -> None:
-        _set_input_value(self._driver, _INPUT_ID["name"], name)
+        _set_input_value(self._driver, InputID.NAME.value, name)
 
     def set_personal_id(self, personal_id: str) -> None:
-        _set_input_value(self._driver, _INPUT_ID["personal_id"], personal_id)
-        self._driver.find_element(By.ID, _BUTTON_ID["check_personal_id"]).click()
+        _set_input_value(self._driver, InputID.PERSONAL_ID.value, personal_id)
+        self._driver.find_element(By.ID, ButtonID.CHECK_PERSONAL_ID.value).click()
 
         # 주민등록번호 확인창
         WebDriverWait(self._driver, 4).until(ec.alert_is_present())
@@ -118,7 +122,7 @@ class _Control:
             raise InvalidDataException(f"Invalid personal ID [{personal_id}]")
 
     def set_head_of_household(self, head_of_household: bool) -> None:
-        select = Select(self._driver.find_element(By.ID, _INPUT_ID["head_of_household"]))
+        select = Select(self._driver.find_element(By.ID, InputID.HEAD_OF_HOUSEHOLD.value))
         if head_of_household:
             select.select_by_visible_text("세대주")
         else:
@@ -126,32 +130,32 @@ class _Control:
 
     def set_continues_to_work(self, continues_to_work: bool) -> None:
         if continues_to_work:
-            self._driver.find_element(By.ID, _INPUT_ID["continues_to_work_y"]).click()
+            self._driver.find_element(By.ID, InputID.CONTINUES_TO_WORK_Y.value).click()
         else:
-            self._driver.find_element(By.ID, _INPUT_ID["continues_to_work_n"]).click()
+            self._driver.find_element(By.ID, InputID.CONTINUES_TO_WORK_N.value).click()
 
     # 근무처별 소득명세 단계
     def next_step_1(self) -> None:
-        self._driver.find_element(By.ID, _BUTTON_ID["step_1_next"]).click()
+        self._driver.find_element(By.ID, ButtonID.STEP_1_NEXT.value).click()
         time.sleep(1)
 
     def set_step_1_start_date(self, start_date: str) -> None:
-        _set_input_value(self._driver, _INPUT_ID["step_1_start_date"], start_date)
+        _set_input_value(self._driver, InputID.STEP_1_START_DATE.value, start_date)
 
     def set_step_1_end_date(self, end_date: str) -> None:
-        _set_input_value(self._driver, _INPUT_ID["step_1_end_date"], end_date)
+        _set_input_value(self._driver, InputID.STEP_1_END_DATE.value, end_date)
 
     def set_step_1_salary(self, salary: str) -> None:
-        _set_input_value(self._driver, _INPUT_ID["step_1_salary"], salary)
+        _set_input_value(self._driver, InputID.STEP_1_SALARY.value, salary)
 
     def set_step_1_income_tax(self, income_tax: str) -> None:
-        _set_input_value(self._driver, _INPUT_ID["step_1_income_tax"], income_tax)
+        _set_input_value(self._driver, InputID.STEP_1_INCOME_TAX.value, income_tax)
 
     def set_step_1_local_income_tax(self, local_income_tax: str) -> None:
-        _set_input_value(self._driver, _INPUT_ID["step_1_local_income_tax"], local_income_tax)
+        _set_input_value(self._driver, InputID.STEP_1_LOCAL_INCOME_TAX.value, local_income_tax)
 
     def confirm_step_1(self) -> None:
-        self._driver.find_element(By.ID, _BUTTON_ID["step_1_confirm"]).click()
+        self._driver.find_element(By.ID, ButtonID.STEP_1_CONFIRM.value).click()
 
         confirm = self._driver.switch_to.alert
         confirm.accept()
@@ -163,19 +167,19 @@ class _Control:
         if not eligible:
             return
 
-        check = self._driver.find_element(By.ID, _INPUT_ID["step_2_women_deduction"])
+        check = self._driver.find_element(By.ID, InputID.STEP_2_WOMEN_DEDUCTION.value)
         if not check.is_selected():
             check.click()
         time.sleep(1)
 
     def set_step_2_health_insurance(self, health_insurance: str) -> None:
-        _set_input_value(self._driver, _INPUT_ID["step_2_health_insurance"], health_insurance)
+        _set_input_value(self._driver, InputID.STEP_2_HEALTH_INSURANCE.value, health_insurance)
 
     def set_step_2_employment_insurance(self, employment_insurance: str) -> None:
-        _set_input_value(self._driver, _INPUT_ID["step_2_employment_insurance"], employment_insurance)
+        _set_input_value(self._driver, InputID.STEP_2_EMPLOYMENT_INSURANCE.value, employment_insurance)
 
     def confirm_step_2(self) -> None:
-        self._driver.find_element(By.ID, _BUTTON_ID["step_2_confirm"]).click()
+        self._driver.find_element(By.ID, ButtonID.STEP_2_CONFIRM.value).click()
         confirm = self._driver.switch_to.alert
         confirm.accept()
 
@@ -183,10 +187,10 @@ class _Control:
         time.sleep(1)
 
     def set_step_3_national_pension(self, national_pension: str) -> None:
-        _set_input_value(self._driver, _INPUT_ID["step_3_national_pension"], national_pension)
+        _set_input_value(self._driver, InputID.STEP_3_NATIONAL_PENSION.value, national_pension)
 
     def confirm_final_step(self) -> None:
-        self._driver.find_element(By.ID, _BUTTON_ID["final_1_confirm"]).click()
+        self._driver.find_element(By.ID, ButtonID.FINAL_1_CONFIRM.value).click()
 
         # 재계산 실행
         WebDriverWait(self._driver, 10).until(ec.alert_is_present())
@@ -205,7 +209,7 @@ class _Control:
             raise InvalidDataException("웹드라이버: 재계산 실패.")
 
         # 추가하기 confirm 창
-        self._driver.find_element(By.ID, _BUTTON_ID["final_2_confirm"]).click()
+        self._driver.find_element(By.ID, ButtonID.FINAL_2_CONFIRM.value).click()
         WebDriverWait(self._driver, 10).until(ec.alert_is_present())
         submit = self._driver.switch_to.alert
         submit.accept()
@@ -237,7 +241,7 @@ class _Control:
         self._driver.switch_to.default_content()
         self._driver.execute_script("window.scrollTo(0, 0);")
         self.switch_to_working_page()
-        reset_button = self._driver.find_element(By.ID, _BUTTON_ID["reset"])
+        reset_button = self._driver.find_element(By.ID, ButtonID.RESET.value)
         reset_button.click()
         time.sleep(1)
 

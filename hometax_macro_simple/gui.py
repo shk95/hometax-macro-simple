@@ -1,12 +1,13 @@
 import logging
 import os
+import shutil
 import subprocess
 import sys
 from typing import Optional
 
-import pandas as pd
 from PySide6 import QtCore, QtWidgets
-from PySide6.QtWidgets import QVBoxLayout
+from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout
+from pandas import ExcelFile
 
 from hometax_macro_simple.macro import Macro
 from hometax_macro_simple.webdriver import is_supported, WebDriverManager
@@ -19,11 +20,11 @@ class MyWidget(QtWidgets.QWidget):
     def __init__(self, webdriver: WebDriverManager):
         super().__init__()
         self.webdriver: WebDriverManager = webdriver
-
         self.file_name: str = ""
         self.selected_sheet_name: str = ""
-        self.exel_file: Optional[pd.ExcelFile] = None
+        self.exel_file: Optional[ExcelFile] = None
 
+        # 전체 세로 배치용 레이아웃
         self.layout: QVBoxLayout = QtWidgets.QVBoxLayout(self)
 
         # "홈텍스 열기" 버튼
@@ -38,21 +39,17 @@ class MyWidget(QtWidgets.QWidget):
 
         # 파일 관련 버튼을 위한 수평 레이아웃
         self.fileLayout = QtWidgets.QHBoxLayout()
-
         # "파일 불러오기" 버튼
         self.load_file_button = QtWidgets.QPushButton("파일 불러오기")
         self.fileLayout.addWidget(self.load_file_button)
         self.load_file_button.clicked.connect(self.load_file)
-
         # "파일 불러오기 취소" 버튼
         self.unload_file_button = QtWidgets.QPushButton("파일 제거")
         self.fileLayout.addWidget(self.unload_file_button)
         self.unload_file_button.clicked.connect(self.unload_file)
-
         # 파일 이름 표시 영역
         self.file_name_label = QtWidgets.QLabel("선택된 파일 없음")
         self.fileLayout.addWidget(self.file_name_label)
-
         # 파일 관련 버튼과 파일 이름 표시 영역을 메인 레이아웃에 추가
         self.layout.addLayout(self.fileLayout)
 
@@ -66,14 +63,15 @@ class MyWidget(QtWidgets.QWidget):
         # self.layout.addWidget(self.shortcut_1_button)
         # self.shortcut_1_button.clicked.connect(self.go_shortcut_1)
 
-        # 예시 파일 열기 버튼
+        # 예시 파일 관련 버튼
+        self.exampleFileLayout = QHBoxLayout()
         self.show_example_button = QtWidgets.QPushButton("예시 파일 열기")
-        self.layout.addWidget(self.show_example_button)
+        self.save_example_button = QtWidgets.QPushButton("예시 파일 저장하기")
+        self.exampleFileLayout.addWidget(self.show_example_button)
+        self.exampleFileLayout.addWidget(self.save_example_button)
         self.show_example_button.clicked.connect(self.show_example)
-
-        # 메시지 표시 영역
-        self.message_label = QtWidgets.QLabel("")
-        self.layout.addWidget(self.message_label)
+        self.save_example_button.clicked.connect(self.save_example)
+        self.layout.addLayout(self.exampleFileLayout)
 
         # 로그 출력을 위한 QPlainTextEdit 위젯 추가
         log_text_box = QTextEditLogger(self)
@@ -84,13 +82,12 @@ class MyWidget(QtWidgets.QWidget):
         logger.addHandler(log_text_box)
         logger.setLevel(_LOG_LEVEL)
 
-        # 테스트 로깅 메시지 발생
         logging.info("프로그램이 시작되었습니다.")
-
         self.check_browser()
 
     @QtCore.Slot()
     def open(self):
+        self.webdriver.close()
         self.webdriver.create()
         self.webdriver.control().open()
 
@@ -98,11 +95,9 @@ class MyWidget(QtWidgets.QWidget):
     def check_browser(self):
         status, version = is_supported()
         if status:
-            self.message_label.setText(f"브라우저 확인 : 지원됨 (버전: {version})")
             logging.info(f"브라우저 확인 : 지원됨 (버전: {version})")
         else:
-            self.message_label.setText("브라우저 확인 : 지원되지 않음.")
-            logging.info("브라우저 확인 : 지원되지 않음.")
+            logging.info("브라우저 확인 : 지원되지 않음. (지원되는 브라우저: Edge)")
 
     @QtCore.Slot()
     def load_file(self):
@@ -110,7 +105,7 @@ class MyWidget(QtWidgets.QWidget):
         if file_name:
             self.file_name = file_name
             # 엑셀 파일을 열고 시트 이름 목록을 가져옴.
-            self.exel_file = pd.ExcelFile(file_name)
+            self.exel_file = ExcelFile(file_name)
             sheet_names = self.exel_file.sheet_names
 
             # 시트 이름을 선택하는 대화상자를 생성.
@@ -128,6 +123,9 @@ class MyWidget(QtWidgets.QWidget):
             self.file_name = ""
             self.selected_sheet_name = ""  # 파일 선택이 취소된 경우
             self.file_name_label.setText("선택된 파일 없음")
+            if self.exel_file:
+                self.exel_file.close()
+            self.exel_file = None
 
     @QtCore.Slot()
     def unload_file(self):
@@ -143,7 +141,6 @@ class MyWidget(QtWidgets.QWidget):
         logging.info("매크로 시작")
         macro = Macro(self.webdriver, self.file_name, self.selected_sheet_name)
         macro.start()
-        self.webdriver.close()
 
         # 에러 데이터를 엑셀 파일로 저장
         error_data = macro.get_error_dataframe()
@@ -162,26 +159,37 @@ class MyWidget(QtWidgets.QWidget):
 
     @QtCore.Slot()
     def show_example(self):
-        # PyInstaller가 생성한 임시 디렉터리 경로를 얻기.
-        # 애플리케이션이 PyInstaller로 패키징되지 않았다면, 현재 파일의 디렉터리를 사용.
-        if getattr(sys, 'frozen', False):
-            path = os.path.join(sys._MEIPASS, 'data/sample.xlsx')
-        else:
-            path = '../data/sample.xlsx'
-
+        example_path = get_example_file_path()
         # 예시 파일의 경로를 확인
-        if os.path.exists(path):
+        if os.path.exists(example_path):
             # Windows 환경
             if os.name == 'nt':
-                os.startfile(path)
+                os.startfile(example_path)
             # macOS 환경
             elif os.name == 'posix':
-                subprocess.run(['open', path])
+                subprocess.run(['open', example_path])
             # Linux 환경 (대부분의 데스크탑 환경에서 동작)
             else:
-                subprocess.run(['xdg-open', path])
+                subprocess.run(['xdg-open', example_path])
         else:
             QtWidgets.QMessageBox.warning(self, "파일 없음", "예시 파일을 찾을 수 없습니다.")
+
+    @QtCore.Slot()
+    def save_example(self):
+        example_path = get_example_file_path()
+        save_path, _ = QtWidgets.QFileDialog.getSaveFileName(self, "예시 파일 저장", "", "Excel Files (*.xlsx)")
+        if save_path:
+            shutil.copyfile(example_path, save_path)
+            QtWidgets.QMessageBox.information(self, "저장 완료", f"예시 파일이 저장되었습니다:\n{save_path}")
+
+
+# PyInstaller가 생성한 임시 디렉터리 경로를 얻기.
+# 애플리케이션이 PyInstaller로 패키징되지 않았다면, 현재 파일의 디렉터리를 사용.
+def get_example_file_path() -> str:
+    if getattr(sys, 'frozen', False):  # PyInstaller 패키징 후 실행 시
+        return os.path.join(sys._MEIPASS, 'data/sample.xlsx')
+    else:  # 개발 중 실행 시
+        return '../data/sample.xlsx'
 
 
 class QTextEditLogger(logging.Handler):

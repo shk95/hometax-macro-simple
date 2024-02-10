@@ -123,8 +123,6 @@ class Macro:
                 logging.info(f"메크로 실행 중 오류 발생. 다음 순서로 넘김. : [{e}]")
                 self.error_data_list.append(self.record.get_current_series())
                 continue
-            finally:
-                logging.info(f"반복 [{i}].\n에러 데이터 : {self.record.get_current_series()}")
 
     # 에러가 발생한 데이터 확인.
     def get_error_dataframe(self) -> DataFrame:

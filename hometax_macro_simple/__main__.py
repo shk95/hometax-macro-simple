@@ -14,6 +14,7 @@ def main():
     widget.resize(800, 600)
     widget.show()
 
+    app.aboutToQuit.connect(webdriver.close)
     sys.exit(app.exec())
 
 

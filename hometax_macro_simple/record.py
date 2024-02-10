@@ -12,7 +12,7 @@ class Record:
     def __init__(self, dataframe: DataFrame):
         self._df_generator: Iterator[Series] = _df_row_generator(dataframe)
         self._current_series: Optional[Series] = None  # 현재 행의 데이터프레임
-        self._data: dict = {
+        self._data: dict[str:str] = {
             "name": "",
             "personal_id": "",
             "start_date": "",
@@ -26,7 +26,7 @@ class Record:
         }
 
     # 레코드의 현재 작업 행을 반환.
-    def get_current_data(self) -> dict:
+    def get_current_data(self) -> dict[str:str]:
         return self._data
 
     # 원본 데이터프레임의 현재 행을 반환.
@@ -95,7 +95,7 @@ def _validate_date(date: str) -> None:
 
 def _validate_number(value: str, field_name) -> None:
     if not value.isdigit():
-        raise InvalidDataException(f"검증오류: {field_name}은(는) 숫자만 포함해야 합니다. [{value}]")
+        raise InvalidDataException(f"검증오류: {field_name}은(는) 숫자만 포함해야 하며 양의 정수여야 합니다. [{value}]")
 
 
 def _validate_salary(value: str) -> None:
