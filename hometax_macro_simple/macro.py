@@ -1,4 +1,5 @@
 import logging
+import time
 
 import pandas
 from pandas import DataFrame
@@ -67,18 +68,21 @@ class Macro:
         self.error_data_list: list[pandas.Series] = []
 
     def start(self) -> None:
+        time.sleep(1)
+        self.webdriver.control().switch_to_default_content()
+
         # 홈텍스 근로소득 지급명세서 제출 페이지에서 작업페이지를 확인.
         if not self.webdriver.control().is_working_page():
+            # FIXME: 예외를 발생시켜서 오류파일을 만들지않도록
             logging.info("잘못된 시작위치 입니다.")
             return
-
-        # 작업페이지(내부 iframe)로 전환.
-        self.webdriver.control().switch_to_working_page()
 
         logging.info("메크로 반복 시작")
         i = 0
         while True:
+            time.sleep(2)
             try:
+                self.webdriver.control().reset()
                 i += 1
                 logging.info(f"메크로 반복 [{i}].")
                 # 레코드의 다음 행 가져오기. 레코드의 다음 행이 없으면 반복 종료.

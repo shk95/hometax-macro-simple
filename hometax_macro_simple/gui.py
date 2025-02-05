@@ -148,6 +148,7 @@ class MyWidget(QtWidgets.QWidget):
         base_file_name = os.path.splitext(os.path.basename(self.file_name))[0] + '_' + self.selected_sheet_name
         # 홈 폴더의 바탕화면 경로 설정
         desktop_path = os.path.join(os.path.expanduser('~'), 'Desktop')
+        # TODO: 파일 이름에 시간 추가
         output_file_path = os.path.join(desktop_path, "오류사항_" + base_file_name + ".xlsx")
 
         # 에러 데이터프레임을 엑셀 파일로 저장

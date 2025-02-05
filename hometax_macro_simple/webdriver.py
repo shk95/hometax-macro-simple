@@ -8,14 +8,13 @@ from typing import Optional
 
 import browsers
 from selenium import webdriver
-from selenium.common import NoSuchElementException
 from selenium.webdriver import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.edge.service import Service as EdgeService
+from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.select import Select
 from selenium.webdriver.support.wait import WebDriverWait
 from webdriver_manager.microsoft import EdgeChromiumDriverManager
-from selenium.webdriver.support import expected_conditions as ec
 
 from hometax_macro_simple.exception import InvalidDataException
 
@@ -25,34 +24,34 @@ _TARGET_BROWSER: str = "msedge"
 
 
 class InputID(Enum):
-    NAME: str = "edtIeNm"
-    PERSONAL_ID: str = "edtNtplTxprDscmNoEncCntn"
-    HEAD_OF_HOUSEHOLD: str = "cmbHshrClCd"
-    CONTINUES_TO_WORK_Y: str = "cmbYrsClCd_input_0"
-    CONTINUES_TO_WORK_N: str = "cmbYrsClCd_input_1"
-    STEP_1_START_DATE: str = "edtAttrYrStrtDt_input"
-    STEP_1_END_DATE: str = "edtAttrYrEndDt_input"
-    STEP_1_SALARY: str = "edtSnwAmt"
-    STEP_1_INCOME_TAX: str = "edtClusInctxPpmTxamt"
-    STEP_1_LOCAL_INCOME_TAX: str = "edtClusRestxPpmTxamt"
-    STEP_2_WOMEN_DEDUCTION: str = "cmbWmnDdcClCd_input_0"
-    STEP_2_HEALTH_INSURANCE: str = "edtNtsEtMateHife"
-    STEP_2_EMPLOYMENT_INSURANCE: str = "edtNtsEtMateEmpInfee"
-    STEP_3_NATIONAL_PENSION: str = "edtNpInfeeUseAmt"
+    NAME: str = "mf_txppWframe_edtIeNm"
+    PERSONAL_ID: str = "mf_txppWframe_edtNtplTxprDscmNoEncCntn"
+    HEAD_OF_HOUSEHOLD: str = "mf_txppWframe_cmbHshrClCd"
+    CONTINUES_TO_WORK_Y: str = "mf_txppWframe_cmbYrsClCd_input_0"
+    CONTINUES_TO_WORK_N: str = "mf_txppWframe_cmbYrsClCd_input_1"
+    STEP_1_START_DATE: str = "mf_txppWframe_edtAttrYrStrtDt_input"  # STEP 1 : 주(현)
+    STEP_1_END_DATE: str = "mf_txppWframe_edtAttrYrEndDt_input"
+    STEP_1_SALARY: str = "mf_txppWframe_edtSnwAmt"
+    STEP_1_INCOME_TAX: str = "mf_txppWframe_edtClusInctxPpmTxamt"
+    STEP_1_LOCAL_INCOME_TAX: str = "mf_txppWframe_edtClusRestxPpmTxamt"
+    STEP_2_WOMEN_DEDUCTION: str = "mf_txppWframe_cmbWmnDdcClCd_input_0"  # STEP 2 : 소득 세액공제명세
+    STEP_2_HEALTH_INSURANCE: str = "mf_txppWframe_edtNtsEtMateHife"
+    STEP_2_EMPLOYMENT_INSURANCE: str = "mf_txppWframe_edtNtsEtMateEmpInfee"
+    STEP_3_NATIONAL_PENSION: str = "mf_txppWframe_edtNpInfeeUseAmt"  # STEP 3 : 연금보험료 공제
 
 
 class ButtonID(Enum):
-    CHECK_PERSONAL_ID: str = "trigger49"
-    STEP_1_NEXT: str = "trigger70"
-    STEP_1_CONFIRM: str = "trigger88"
-    STEP_2_CONFIRM: str = "trigger102"
-    FINAL_1_CONFIRM: str = "trigger125"  # 재계산하기
-    FINAL_2_CONFIRM: str = "trigger57"  # 추가하기
-    RESET: str = "trigger68"
+    CHECK_PERSONAL_ID: str = "mf_txppWframe_trigger49"
+    STEP_1_NEXT: str = "mf_txppWframe_trigger70"
+    STEP_1_CONFIRM: str = "mf_txppWframe_trigger88"
+    STEP_2_CONFIRM: str = "mf_txppWframe_trigger102"
+    FINAL_1_CONFIRM: str = "mf_txppWframe_trigger125"  # 재계산하기
+    FINAL_2_CONFIRM: str = "mf_txppWframe_trigger57"  # 추가하기
+    RESET: str = "mf_txppWframe_trigger68"
 
 
 class ElementID(Enum):
-    WORKING_PAGE_IFRAME: str = "txppIframe"
+    WORKING_PAGE_ID: str = "mf_txppWframe_textbox922"
 
 
 class WebDriverManager:
@@ -82,22 +81,21 @@ class _Control:
 
     # 메크로를 시작할 페이지가 맞는지 확인
     def is_working_page(self) -> bool:
-        self._driver.switch_to.default_content()
-        self._driver.execute_script("window.scrollTo(0, 0);")
+        self.switch_to_default_content()
+        err_msg = "메크로 시작 페이지가 아닙니다."
         try:
-            self._driver.find_element(By.ID, ElementID.WORKING_PAGE_IFRAME.value)
-        except NoSuchElementException as e:
-            logging.info(f"메크로 시작 페이지가 아닙니다. [{e.msg}]")
-            return False
+            text = self._driver.find_element(By.ID, ElementID.WORKING_PAGE_ID.value).text
+            if not text.startswith("근로소득 지급명세서"):
+                logging.info(f"{err_msg}")
+                return False
         except Exception as e:
-            logging.info(f"알수없는 오류가 발생했습니다. [{e}]")
+            logging.info(f"{err_msg} [{e}]")
             return False
         return True
 
-    # 메크로 작업할 영역으로 이동
-    def switch_to_working_page(self) -> None:
+    # 기본 창으로 이동
+    def switch_to_default_content(self) -> None:
         self._driver.switch_to.default_content()
-        self._driver.switch_to.frame(ElementID.WORKING_PAGE_IFRAME.value)
 
     def set_name(self, name: str) -> None:
         _set_input_value(self._driver, InputID.NAME.value, name)
@@ -107,19 +105,23 @@ class _Control:
         self._driver.find_element(By.ID, ButtonID.CHECK_PERSONAL_ID.value).click()
 
         # 주민등록번호 확인창
+        ok_message = "확인완료되었습니다."
+        error_message = "주민등록번호를 확인 해주세요."
         WebDriverWait(self._driver, 4).until(ec.alert_is_present())
         alert = self._driver.switch_to.alert
         alert_message = alert.text
         logging.info(f"{alert_message}")
         alert.dismiss()
+        self.switch_to_default_content()
 
-        self.switch_to_working_page()
-        ok_message = "확인완료되었습니다."
-        # error_message = "주민등록번호를 확인 해주세요."
-        if not alert_message.startswith(ok_message):
-            self.reset()
+        if alert_message.startswith(ok_message):
+            return
+        self.reset()
+        if alert_message.startswith(error_message):
             # 현재 오류가난 행 반환, 해당 행의 매크로 종료
             raise InvalidDataException(f"Invalid personal ID [{personal_id}]")
+        else:
+            raise InvalidDataException(f"Unknown error: [{alert_message}]")
 
     def set_head_of_household(self, head_of_household: bool) -> None:
         select = Select(self._driver.find_element(By.ID, InputID.HEAD_OF_HOUSEHOLD.value))
@@ -130,14 +132,13 @@ class _Control:
 
     def set_continues_to_work(self, continues_to_work: bool) -> None:
         if continues_to_work:
-            self._driver.find_element(By.ID, InputID.CONTINUES_TO_WORK_Y.value).click()
+            _click_element_by_id(self._driver, InputID.CONTINUES_TO_WORK_Y.value)
         else:
-            self._driver.find_element(By.ID, InputID.CONTINUES_TO_WORK_N.value).click()
+            _click_element_by_id(self._driver, InputID.CONTINUES_TO_WORK_N.value)
 
     # 근무처별 소득명세 단계
     def next_step_1(self) -> None:
-        self._driver.find_element(By.ID, ButtonID.STEP_1_NEXT.value).click()
-        time.sleep(1)
+        _click_element_by_id(self._driver, ButtonID.STEP_1_NEXT.value)
 
     def set_step_1_start_date(self, start_date: str) -> None:
         _set_input_value(self._driver, InputID.STEP_1_START_DATE.value, start_date)
@@ -156,11 +157,11 @@ class _Control:
 
     def confirm_step_1(self) -> None:
         self._driver.find_element(By.ID, ButtonID.STEP_1_CONFIRM.value).click()
-
+        time.sleep(1)
+        WebDriverWait(self._driver, 10).until(ec.alert_is_present())
         confirm = self._driver.switch_to.alert
         confirm.accept()
-
-        self.switch_to_working_page()
+        self.switch_to_default_content()
         time.sleep(1)
 
     def set_step_2_woman_deduction(self, eligible: bool) -> None:
@@ -169,8 +170,8 @@ class _Control:
 
         check = self._driver.find_element(By.ID, InputID.STEP_2_WOMEN_DEDUCTION.value)
         if not check.is_selected():
-            check.click()
-        time.sleep(1)
+            self._driver.execute_script("arguments[0].click();", check)
+            time.sleep(1)
 
     def set_step_2_health_insurance(self, health_insurance: str) -> None:
         _set_input_value(self._driver, InputID.STEP_2_HEALTH_INSURANCE.value, health_insurance)
@@ -180,55 +181,58 @@ class _Control:
 
     def confirm_step_2(self) -> None:
         self._driver.find_element(By.ID, ButtonID.STEP_2_CONFIRM.value).click()
+        time.sleep(1)
+        WebDriverWait(self._driver, 10).until(ec.alert_is_present())
         confirm = self._driver.switch_to.alert
         confirm.accept()
-
-        self.switch_to_working_page()
-        time.sleep(1)
+        self.switch_to_default_content()
 
     def set_step_3_national_pension(self, national_pension: str) -> None:
         _set_input_value(self._driver, InputID.STEP_3_NATIONAL_PENSION.value, national_pension)
 
     def confirm_final_step(self) -> None:
         self._driver.find_element(By.ID, ButtonID.FINAL_1_CONFIRM.value).click()
+        time.sleep(1)
 
-        # 재계산 실행
+        # 계산하기 창 확인
+        message_ok_1 = "재계산이 완료되었습니다."
         WebDriverWait(self._driver, 10).until(ec.alert_is_present())
         confirm = self._driver.switch_to.alert
         confirm_message = confirm.text
         logging.info(f"계산하기 단계 : [{confirm_message}]")
         confirm.dismiss()
-        self.switch_to_working_page()
-        time.sleep(1)
-
-        # 재계산 실행후 완료 alert 창
-        message_ok_1 = "재계산이 완료되었습니다."
+        time.sleep(4)
+        self.switch_to_default_content()
         if not confirm_message.startswith(message_ok_1):
             logging.info(f"재계산 실패. [{confirm_message}]")
             self.reset()
             raise InvalidDataException("웹드라이버: 재계산 실패.")
 
-        # 추가하기 confirm 창
+        # 입력완료 버튼
         self._driver.find_element(By.ID, ButtonID.FINAL_2_CONFIRM.value).click()
+        time.sleep(1)
+
+        # 입력완료 알림창 확인
         WebDriverWait(self._driver, 10).until(ec.alert_is_present())
         submit = self._driver.switch_to.alert
         submit.accept()
 
-        # 추가하기 confirm 창 확인
+        # 입력완료 확인창
+        message_ok_2 = "처리가 완료되었습니다"
+        message_duplicated = "기존 수록자료가 존재합니다"
         WebDriverWait(self._driver, 12).until(ec.alert_is_present())
         alert_dialog = self._driver.switch_to.alert
         alert_message = alert_dialog.text
         logging.info(f"추가하기 단계 : [{alert_message}]")
         alert_dialog.accept()
-
-        message_ok_2 = "처리가 완료되었습니다"
-        message_duplicated = "기존 수록자료가 존재합니다"
+        time.sleep(4)
+        self.switch_to_default_content()
         if alert_message.startswith(message_ok_2):
             logging.info(f"추가하기 성공.")
-            self.switch_to_working_page()
+            self._driver.execute_script("window.scrollTo(0, 0);")
             return
         elif alert_message.startswith(message_duplicated):
-            logging.info(f"데이터 중복입력. 무시됨.")
+            logging.info(f"이미 추가된 데이터. 입력 무시됨.")
             self.reset()
             return
         else:
@@ -238,12 +242,11 @@ class _Control:
 
     # 작성내역 초기화
     def reset(self) -> None:  # 메인콘텐츠로 전환 -> 맨 위로 스크롤 -> 작업페이지로 전환 -> 초기화 버튼 클릭
-        self._driver.switch_to.default_content()
+        self.switch_to_default_content()
         self._driver.execute_script("window.scrollTo(0, 0);")
-        self.switch_to_working_page()
-        reset_button = self._driver.find_element(By.ID, ButtonID.RESET.value)
-        reset_button.click()
-        time.sleep(1)
+        time.sleep(2)
+        _click_element_by_id(self._driver, ButtonID.RESET.value)
+        time.sleep(3)
 
 
 class _EdgeDriver:
@@ -266,9 +269,18 @@ class _EdgeDriver:
         self.driver.implicitly_wait(7)
 
 
+def _click_element_by_id(driver: webdriver.Edge, element_id: str) -> None:
+    element = driver.find_element(By.ID, element_id)
+    time.sleep(1)
+    driver.execute_script("arguments[0].click();", element)
+    time.sleep(3)
+
+
 def _set_input_value(driver: webdriver.Edge, input_id: str, value: str) -> None:
+    time.sleep(1)
     _clear_input(driver, input_id)
     logging.info(f"Set value: [{value}]")
+    time.sleep(1)
     driver.find_element(By.ID, input_id).send_keys(value)
 
 

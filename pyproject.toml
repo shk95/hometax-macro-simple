@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "hometax_macro_simple"
-version = "0.1.0"
+version = "0.2.0"
 description = "파이썬을 이용한 간단한 홈텍스 제출 메크로[근로소득]"
 authors = ["seok-hyeon Kang <shk9510@gmail.com>"]
 license = "MIT"
